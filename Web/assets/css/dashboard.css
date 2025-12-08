@@ -1,0 +1,191 @@
+/* Reset & Layout */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    background-color: #f4f6f9;
+    height: 100vh;
+}
+
+/* --- SIDEBAR BASE --- */
+.sidebar {
+    width: 260px;
+    background-color: #2c3e50;
+    color: #ecf0f1;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    position: fixed;
+    left: 0;
+    top: 0;
+    transition: width 0.3s ease;
+    z-index: 1000;
+    overflow-x: hidden;
+}
+
+/* Header & Toggle */
+.brand-section {
+    padding: 20px;
+    background-color: #1a252f;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+}
+
+.brand-section h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    transition: opacity 0.3s;
+}
+
+#sidebarToggle {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+}
+
+/* Navigation Links */
+.nav-links {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.nav-links li {
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.nav-links a, .dropdown-btn {
+    display: flex;
+    align-items: center;
+    padding: 15px 20px;
+    color: #bdc3c7;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.2s;
+    justify-content: space-between;
+}
+
+.icon-text {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.nav-links i {
+    width: 20px;
+    text-align: center;
+}
+
+.nav-links a:hover, .dropdown-btn:hover {
+    background-color: #34495e;
+    color: #fff;
+}
+
+/* Active State */
+.nav-links a.active {
+    background-color: #3498db;
+    color: white;
+}
+
+/* --- SUB MENUS --- */
+.submenu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    background-color: #22303e;
+    display: none; /* Hidden by default */
+}
+
+.submenu li a {
+    padding-left: 55px; /* Indent sub-items */
+    font-size: 0.9rem;
+    color: #95a5a6;
+    border-bottom: none;
+}
+
+.submenu li a:hover {
+    color: white;
+    background: #2c3e50;
+}
+
+/* Chevron Rotation */
+.arrow {
+    font-size: 0.8rem;
+    transition: transform 0.3s;
+}
+.dropdown.open .arrow {
+    transform: rotate(90deg);
+}
+.dropdown.open .submenu {
+    display: block;
+}
+
+/* --- COLLAPSED (MINI) SIDEBAR MODE --- */
+.sidebar.collapsed {
+    width: 70px;
+}
+
+.sidebar.collapsed .link-text,
+.sidebar.collapsed .arrow,
+.sidebar.collapsed .brand-section h3 {
+    display: none; /* Hide Text */
+}
+
+.sidebar.collapsed .nav-links a, 
+.sidebar.collapsed .dropdown-btn {
+    justify-content: center;
+    padding: 15px 0;
+}
+
+.sidebar.collapsed .submenu {
+    position: absolute;
+    left: 70px;
+    top: auto;
+    background: #2c3e50;
+    width: 200px;
+    display: none !important; /* Hide submenus in mini mode unless handled by hover (optional) */
+    box-shadow: 4px 0 5px rgba(0,0,0,0.2);
+}
+
+/* Show submenu on hover in collapsed mode (Optional UX enhancement) */
+.sidebar.collapsed .dropdown:hover .submenu {
+    display: block !important;
+    position: absolute;
+    margin-top: -45px; /* Align with parent */
+}
+
+/* Content Area Adjustment */
+.main-content {
+    margin-left: 260px;
+    padding: 30px;
+    width: calc(100% - 260px);
+    transition: margin-left 0.3s ease, width 0.3s ease;
+}
+
+/* Class to apply to main-content when sidebar is collapsed */
+.main-content.expanded {
+    margin-left: 70px;
+    width: calc(100% - 70px);
+}
+
+/* Logout Section */
+.logout-section {
+    padding: 10px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+}
+.btn-logout {
+    background-color: #c0392b !important;
+    color: white !important;
+    border-radius: 4px;
+    justify-content: center !important;
+}
+.sidebar.collapsed .btn-logout span { display: none; }
