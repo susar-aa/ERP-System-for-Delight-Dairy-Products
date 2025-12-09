@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['ajax_action'])) {
 $msg = "";
 $active_order = null;
 $active_items = [];
-$mode = 'new'; 
+$mode = isset($_GET['mode']) ? $_GET['mode'] : 'new'; // 'new', 'edit', 'view'
 
 // --- 1. HANDLE SAVE INVOICE ---
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['action'] == 'save') {
@@ -79,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
         }
 
         $conn->commit();
-        header("Location: invoice_panel.php?id=$new_id&msg=saved");
+        header("Location: invoice_panel.php?id=$new_id&msg=saved&mode=view");
         exit;
 
     } catch (Exception $e) {
@@ -88,13 +88,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action']) && $_POST['a
     }
 }
 
-// --- 2. LOAD DATA (EDIT MODE) ---
+// --- 2. LOAD DATA ---
 if (isset($_GET['id'])) {
     $id = intval($_GET['id']);
     $res = $conn->query("SELECT * FROM mobile_orders WHERE id = $id");
     if($res->num_rows > 0){
         $active_order = $res->fetch_assoc();
-        $mode = 'edit';
+        // If mode is not explicitly 'view', assume 'edit' when ID is present
+        if($mode != 'view') $mode = 'edit';
+        
         $items_res = $conn->query("SELECT i.*, p.product_name FROM mobile_order_items i JOIN products p ON i.product_id = p.id WHERE i.mobile_order_id = $id");
         while($row = $items_res->fetch_assoc()){
             $gross = $row['quantity'] * $row['unit_price'];
@@ -104,11 +106,14 @@ if (isset($_GET['id'])) {
     }
 }
 
+$is_view = ($mode == 'view');
+$disabled = $is_view ? 'disabled' : '';
+$readonly = $is_view ? 'readonly' : '';
+
 // --- 3. FETCH MASTERS ---
 $customers = $conn->query("SELECT * FROM customers ORDER BY shop_name");
 
-// Fetch Products WITH Stock Logic
-// Joining with product_stock table to get SUM of available quantity
+// Fetch Products
 $products = $conn->query("
     SELECT p.*, COALESCE(SUM(ps.quantity_available), 0) as current_stock 
     FROM products p 
@@ -139,51 +144,52 @@ while($c = $customers->fetch_assoc()){ $cust_js[] = $c; }
         body { background: #f0f0f0; font-family: 'Segoe UI', sans-serif; font-size: 13px; color:#333; }
         .main-content { margin-left: 260px; padding: 15px; }
         
-        /* Toolbar & Header */
+        /* Toolbar */
         .toolbar { background: #fff; padding: 8px; border-bottom: 2px solid #ddd; margin-bottom: 15px; display: flex; gap: 10px; box-shadow: 0 2px 3px rgba(0,0,0,0.05); }
-        .tool-btn { border: 1px solid #ccc; background: #f9f9f9; padding: 6px 12px; cursor: pointer; border-radius: 4px; display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; }
+        .tool-btn { border: 1px solid #ccc; background: #f9f9f9; padding: 6px 12px; cursor: pointer; border-radius: 4px; display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; text-decoration: none; color: #333; }
         .tool-btn:hover { background: #eef; border-color: #3498db; color: #2980b9; }
 
+        /* Sections */
         .header-section { background: #fff; padding: 20px; border-radius: 5px; display: flex; gap: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .h-col { display: flex; flex-direction: column; gap: 10px; flex: 1; }
         .form-line { display: flex; align-items: center; }
         .form-line label { width: 100px; font-weight: 600; color: #555; font-size: 12px; }
         .form-line input, .form-line select, .form-line textarea { flex: 1; padding: 6px; border: 1px solid #ccc; border-radius: 3px; font-size: 13px; }
+        .form-line input:disabled, .form-line select:disabled { background: #f9f9f9; color: #555; border-color: #eee; cursor: not-allowed; }
 
-        /* Summary Box */
         .summary-box { background: #f1f2f6; border: 1px solid #dcdde1; padding: 15px; border-radius: 5px; flex: 0 0 300px; }
         .sum-line { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
         .sum-line input { width: 140px; text-align: right; padding: 5px; font-weight: bold; border: 1px solid #ccc; }
+        .sum-line input:read-only { background: #e9ecef; }
 
-        /* Item Entry Bar */
         .item-entry { background: #fff; padding: 15px; margin-top: 15px; border-radius: 5px; display: flex; align-items: flex-end; gap: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .entry-group { display: flex; flex-direction: column; gap: 5px; }
         .entry-group label { font-size: 11px; font-weight: bold; text-transform: uppercase; color: #777; }
         .entry-group input { padding: 6px; border: 1px solid #ccc; border-radius: 3px; font-size: 13px; }
-        
         .btn-add { background: #2ecc71; color: white; border: none; padding: 0 20px; height: 32px; border-radius: 3px; cursor: pointer; font-weight: bold; }
-        .btn-update { background: #f39c12; color: white; } /* Update Mode Style */
+        .btn-update { background: #f39c12; color: white; }
 
-        /* Searchable Select Styles */
+        /* Searchable Select */
         .search-select { position: relative; flex: 1; }
         .search-select input { width: 100%; padding: 6px; border: 1px solid #ccc; border-radius: 3px; }
         .search-results { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ccc; z-index: 100; max-height: 200px; overflow-y: auto; display: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .search-item { padding: 8px; cursor: pointer; display: flex; justify-content: space-between; border-bottom: 1px solid #f0f0f0; }
         .search-item:hover { background: #f9f9f9; }
         .stock-badge { background: #3498db; color: white; padding: 1px 6px; border-radius: 10px; font-size: 10px; }
-        .stock-low { background: #e74c3c; }
 
         /* Grid */
         .grid-container { margin-top: 15px; background: #fff; border-radius: 5px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); min-height: 300px; }
         .grid-table { width: 100%; border-collapse: collapse; }
-        .grid-table th { background: #34495e; color: #fff; padding: 10px; text-align: left; font-size: 12px; }
+        .grid-table th { background: #34495e; color: #fff; padding: 10px; text-align: left; font-size: 12px; font-weight: 600; text-transform: uppercase; }
         .grid-table td { padding: 8px 10px; border-bottom: 1px solid #eee; cursor: pointer; }
-        .grid-table tr:hover { background: #eaf2f8; } /* Highlight on hover */
-        
+        .row-input { width: 100%; border: 1px solid transparent; background: transparent; padding: 4px; font-size: 13px; }
+        .row-input:focus { border-color: #3498db; background: #fff; outline: none; }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+
         /* Modal */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
         .modal-content { background: white; padding: 20px; border-radius: 5px; width: 400px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
-        .modal-header { font-weight: bold; font-size: 16px; margin-bottom: 15px; display: flex; justify-content: space-between; }
     </style>
 </head>
 <body>
@@ -200,13 +206,18 @@ while($c = $customers->fetch_assoc()){ $cust_js[] = $c; }
 
             <!-- TOOLBAR -->
             <div class="toolbar">
-                <button type="button" class="tool-btn" onclick="resetForm()"><i class="fas fa-file"></i> Clear</button>
-                <button type="button" class="tool-btn" onclick="window.location.href='invoice_panel.php'"><i class="fas fa-plus"></i> New</button>
-                <button type="button" class="tool-btn" onclick="validateAndSubmit()"><i class="fas fa-save"></i> Save</button>
-                <?php if($mode == 'edit'): ?>
+                <?php if($is_view): ?>
+                    <!-- VIEW MODE TOOLBAR -->
+                    <a href="invoice_panel.php" class="tool-btn"><i class="fas fa-plus"></i> New</a>
+                    <a href="invoice_panel.php?id=<?php echo $active_order['id']; ?>&mode=edit" class="tool-btn"><i class="fas fa-edit"></i> Edit</a>
                     <button type="button" class="tool-btn" onclick="window.open('print_invoice.php?id=<?php echo $active_order['id']; ?>', '_blank')"><i class="fas fa-print"></i> Print</button>
+                    <a href="view_orders.php" class="tool-btn" style="margin-left:auto;"><i class="fas fa-arrow-left"></i> Back to List</a>
+                <?php else: ?>
+                    <!-- EDIT/NEW MODE TOOLBAR -->
+                    <button type="button" class="tool-btn" onclick="resetForm()"><i class="fas fa-file"></i> Clear</button>
+                    <button type="button" class="tool-btn" onclick="validateAndSubmit()"><i class="fas fa-save"></i> Save</button>
+                    <button type="button" class="tool-btn" onclick="window.location.href='view_orders.php'" style="margin-left:auto;"><i class="fas fa-times"></i> Cancel</button>
                 <?php endif; ?>
-                <button type="button" class="tool-btn" onclick="window.location.href='index.php'"><i class="fas fa-times"></i> Cancel</button>
             </div>
 
             <!-- HEADER INFO -->
@@ -219,11 +230,11 @@ while($c = $customers->fetch_assoc()){ $cust_js[] = $c; }
                     </div>
                     <div class="form-line">
                         <label>Date</label>
-                        <input type="date" name="order_date" value="<?php echo $active_order['order_date'] ?? date('Y-m-d'); ?>" required>
+                        <input type="date" name="order_date" value="<?php echo $active_order['order_date'] ?? date('Y-m-d'); ?>" required <?php echo $disabled; ?>>
                     </div>
                     <div class="form-line">
                         <label>Sales Rep</label>
-                        <select name="rep_id" required>
+                        <select name="rep_id" required <?php echo $disabled; ?>>
                             <?php while($r = $reps->fetch_assoc()): ?>
                                 <option value="<?php echo $r['id']; ?>" <?php echo ($active_order['rep_id']??1) == $r['id']?'selected':''; ?>><?php echo $r['full_name']; ?></option>
                             <?php endwhile; ?>
@@ -235,13 +246,14 @@ while($c = $customers->fetch_assoc()){ $cust_js[] = $c; }
                 <div class="h-col">
                     <div class="form-line">
                         <label>Customer</label>
-                        <!-- CUSTOM CUSTOMER SEARCH -->
                         <div class="search-select">
                             <input type="hidden" name="customer_id" id="custId" value="<?php echo $active_order['customer_id'] ?? ''; ?>">
-                            <input type="text" id="custSearch" placeholder="Search Customer..." autocomplete="off">
+                            <input type="text" id="custSearch" placeholder="Search Customer..." autocomplete="off" <?php echo $disabled; ?>>
                             <div class="search-results" id="custResults"></div>
                         </div>
+                        <?php if(!$is_view): ?>
                         <button type="button" onclick="openCustModal()" style="background:#27ae60; color:white; border:none; width:30px; margin-left:5px; border-radius:3px; cursor:pointer;"><i class="fas fa-plus"></i></button>
+                        <?php endif; ?>
                     </div>
                     <div class="form-line">
                         <label>Address</label>
@@ -249,7 +261,7 @@ while($c = $customers->fetch_assoc()){ $cust_js[] = $c; }
                     </div>
                     <div class="form-line">
                         <label>Pay Term</label>
-                        <select name="payment_term">
+                        <select name="payment_term" <?php echo $disabled; ?>>
                             <option value="cash" <?php echo ($active_order['payment_status']??'') == 'cash' ? 'selected':''; ?>>Cash</option>
                             <option value="credit" <?php echo ($active_order['payment_status']??'') == 'credit' ? 'selected':''; ?>>Credit</option>
                             <option value="cheque" <?php echo ($active_order['payment_status']??'') == 'cheque' ? 'selected':''; ?>>Cheque</option>
@@ -262,8 +274,8 @@ while($c = $customers->fetch_assoc()){ $cust_js[] = $c; }
                 <!-- COL 3 -->
                 <div class="summary-box">
                     <div class="sum-line"><label>Sub Total</label><input type="text" id="hdrSubTotal" readonly value="0.00"></div>
-                    <div class="sum-line"><label>Discount</label><input type="number" id="hdrDiscount" value="0.00" step="0.01" oninput="calcTotals()"></div>
-                    <div class="sum-line"><label>VAT / Tax</label><input type="number" id="hdrVat" value="0.00" step="0.01" oninput="calcTotals()"></div>
+                    <div class="sum-line"><label>Discount</label><input type="number" id="hdrDiscount" value="0.00" step="0.01" oninput="calcTotals()" <?php echo $readonly; ?>></div>
+                    <div class="sum-line"><label>VAT / Tax</label><input type="number" id="hdrVat" value="0.00" step="0.01" oninput="calcTotals()" <?php echo $readonly; ?>></div>
                     <div style="border-top:1px solid #ccc; margin:10px 0;"></div>
                     <div class="sum-line">
                         <label style="font-size:15px; color:#2c3e50;">Net Amount</label>
@@ -272,13 +284,12 @@ while($c = $customers->fetch_assoc()){ $cust_js[] = $c; }
                 </div>
             </div>
 
-            <!-- ITEM ENTRY BAR -->
+            <!-- ITEM ENTRY BAR (Hidden in View Mode) -->
+            <?php if(!$is_view): ?>
             <div class="item-entry">
-                <input type="hidden" id="entryRowIndex" value="-1"> <!-- -1 means New Row -->
-
+                <input type="hidden" id="entryRowIndex" value="-1"> 
                 <div class="entry-group" style="flex:2;">
                     <label>Select Product</label>
-                    <!-- CUSTOM PRODUCT SEARCH -->
                     <div class="search-select">
                         <input type="hidden" id="entryId">
                         <input type="hidden" id="entryCode">
@@ -306,6 +317,7 @@ while($c = $customers->fetch_assoc()){ $cust_js[] = $c; }
                 
                 <button type="button" id="btnAdd" class="btn-add" onclick="handleGridAction()">ADD <i class="fas fa-plus"></i></button>
             </div>
+            <?php endif; ?>
 
             <!-- GRID -->
             <div class="grid-container">
@@ -319,12 +331,12 @@ while($c = $customers->fetch_assoc()){ $cust_js[] = $c; }
                             <th class="text-right">Rate</th>
                             <th class="text-right">Dis %</th>
                             <th class="text-right">Net Total</th>
-                            <th class="text-center" style="width:50px;">Del</th>
+                            <?php if(!$is_view): ?><th class="text-center" style="width:50px;">Del</th><?php endif; ?>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if(!empty($active_items)): $count=1; foreach($active_items as $itm): ?>
-                        <tr onclick="editRow(this)">
+                        <tr <?php if(!$is_view) echo 'onclick="editRow(this)"'; ?>>
                             <td><?php echo $count++; ?></td>
                             <td>ITM-<?php echo str_pad($itm['product_id'], 3, '0', STR_PAD_LEFT); ?>
                                 <input type="hidden" name="item_id[]" value="<?php echo $itm['product_id']; ?>">
@@ -334,7 +346,9 @@ while($c = $customers->fetch_assoc()){ $cust_js[] = $c; }
                             <td class="text-right"><input type="hidden" name="item_rate[]" value="<?php echo $itm['unit_price']; ?>"><?php echo $itm['unit_price']; ?></td>
                             <td class="text-right"><input type="hidden" value="<?php echo $itm['dis_per']; ?>"><?php echo $itm['dis_per']; ?></td>
                             <td class="text-right"><input type="hidden" name="item_net_total[]" value="<?php echo $itm['line_total']; ?>"><?php echo $itm['line_total']; ?></td>
+                            <?php if(!$is_view): ?>
                             <td class="text-center"><i class="fas fa-trash-alt" style="color:#c0392b;" onclick="event.stopPropagation(); removeRow(this)"></i></td>
+                            <?php endif; ?>
                         </tr>
                         <?php endforeach; endif; ?>
                     </tbody>
@@ -346,7 +360,10 @@ while($c = $customers->fetch_assoc()){ $cust_js[] = $c; }
     <!-- ADD CUSTOMER MODAL -->
     <div id="custModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">Add New Customer <span onclick="closeCustModal()" style="cursor:pointer;">&times;</span></div>
+            <div style="display:flex; justify-content:space-between; margin-bottom:15px; font-weight:bold;">
+                <span>Add New Customer</span>
+                <span onclick="closeCustModal()" style="cursor:pointer;">&times;</span>
+            </div>
             <div class="entry-group">
                 <label>Shop Name</label><input type="text" id="newShopName" placeholder="Enter Shop Name">
             </div>
@@ -360,85 +377,92 @@ while($c = $customers->fetch_assoc()){ $cust_js[] = $c; }
         </div>
     </div>
 
+    <!-- Sidebar JS -->
+    <script src="../../assets/js/dashboard.js"></script>
+
     <script>
         const products = <?php echo json_encode($prod_js); ?>;
         const customers = <?php echo json_encode($cust_js); ?>;
-        let selectedRow = null;
+        const isViewMode = <?php echo $is_view ? 'true' : 'false'; ?>;
 
         // --- 1. SEARCHABLE DROPDOWNS ---
-        
-        // Setup Product Search
-        const prodInput = document.getElementById('entrySearch');
-        const prodResults = document.getElementById('prodResults');
-        
-        prodInput.addEventListener('input', function() {
-            const val = this.value.toLowerCase();
-            prodResults.innerHTML = '';
-            if(val.length < 1) { prodResults.style.display = 'none'; return; }
+        if (!isViewMode) {
+            // Product Search
+            const prodInput = document.getElementById('entrySearch');
+            const prodResults = document.getElementById('prodResults');
             
-            const filtered = products.filter(p => p.product_name.toLowerCase().includes(val));
-            if(filtered.length > 0) {
-                prodResults.style.display = 'block';
-                filtered.forEach(p => {
-                    const div = document.createElement('div');
-                    div.className = 'search-item';
-                    const stockClass = p.current_stock < 10 ? 'stock-low' : '';
-                    div.innerHTML = `<span>${p.product_name}</span> <span class="stock-badge ${stockClass}">Stock: ${p.current_stock}</span>`;
-                    div.onclick = () => selectProduct(p);
-                    prodResults.appendChild(div);
-                });
-            } else {
-                prodResults.style.display = 'none';
-            }
-        });
+            prodInput.addEventListener('input', function() {
+                const val = this.value.toLowerCase();
+                prodResults.innerHTML = '';
+                if(val.length < 1) { prodResults.style.display = 'none'; return; }
+                
+                const filtered = products.filter(p => p.product_name.toLowerCase().includes(val));
+                if(filtered.length > 0) {
+                    prodResults.style.display = 'block';
+                    filtered.forEach(p => {
+                        const div = document.createElement('div');
+                        div.className = 'search-item';
+                        const stockClass = p.current_stock < 10 ? 'stock-low' : '';
+                        div.innerHTML = `<span>${p.product_name}</span> <span class="stock-badge ${stockClass}">Stock: ${p.current_stock}</span>`;
+                        div.onclick = () => selectProduct(p);
+                        prodResults.appendChild(div);
+                    });
+                } else { prodResults.style.display = 'none'; }
+            });
+        }
 
         function selectProduct(p) {
             document.getElementById('entryId').value = p.id;
             document.getElementById('entryCode').value = 'ITM-' + String(p.id).padStart(3, '0');
             document.getElementById('entrySearch').value = p.product_name;
             document.getElementById('entryRate').value = p.selling_price;
-            prodResults.style.display = 'none';
+            document.getElementById('prodResults').style.display = 'none';
             calcEntry();
         }
 
-        // Setup Customer Search
-        const custInput = document.getElementById('custSearch');
-        const custResults = document.getElementById('custResults');
+        // Customer Search
+        if (!isViewMode) {
+            const custInput = document.getElementById('custSearch');
+            const custResults = document.getElementById('custResults');
 
-        custInput.addEventListener('input', function() {
-            const val = this.value.toLowerCase();
-            custResults.innerHTML = '';
-            if(val.length < 1) { custResults.style.display = 'none'; return; }
-            
-            const filtered = customers.filter(c => c.shop_name.toLowerCase().includes(val));
-            if(filtered.length > 0) {
-                custResults.style.display = 'block';
-                filtered.forEach(c => {
-                    const div = document.createElement('div');
-                    div.className = 'search-item';
-                    div.innerHTML = `<span>${c.shop_name}</span>`;
-                    div.onclick = () => selectCustomer(c);
-                    custResults.appendChild(div);
-                });
-            }
-        });
+            custInput.addEventListener('input', function() {
+                const val = this.value.toLowerCase();
+                custResults.innerHTML = '';
+                if(val.length < 1) { custResults.style.display = 'none'; return; }
+                
+                const filtered = customers.filter(c => c.shop_name.toLowerCase().includes(val));
+                if(filtered.length > 0) {
+                    custResults.style.display = 'block';
+                    filtered.forEach(c => {
+                        const div = document.createElement('div');
+                        div.className = 'search-item';
+                        div.innerHTML = `<span>${c.shop_name}</span>`;
+                        div.onclick = () => selectCustomer(c);
+                        custResults.appendChild(div);
+                    });
+                }
+            });
+        }
 
         function selectCustomer(c) {
             document.getElementById('custId').value = c.id;
-            document.getElementById('custSearch').value = c.shop_name;
+            if(document.getElementById('custSearch')) document.getElementById('custSearch').value = c.shop_name;
             document.getElementById('custAddress').value = c.address;
-            custResults.style.display = 'none';
+            if(document.getElementById('custResults')) document.getElementById('custResults').style.display = 'none';
         }
 
-        // Init Data for Edit Mode
+        // Init Data for Edit/View Mode
         const preCustId = "<?php echo $active_order['customer_id'] ?? ''; ?>";
         if(preCustId) {
             const preCust = customers.find(c => c.id == preCustId);
-            if(preCust) selectCustomer(preCust);
+            if(preCust) {
+                selectCustomer(preCust);
+                // In View Mode, manually set the input text since event listeners aren't attached
+                if(isViewMode) document.getElementById('custSearch').value = preCust.shop_name;
+            }
         }
 
         // --- 2. GRID OPERATIONS ---
-
         function calcEntry() {
             const qty = parseFloat(document.getElementById('entryQty').value) || 0;
             const rate = parseFloat(document.getElementById('entryRate').value) || 0;
@@ -460,7 +484,6 @@ while($c = $customers->fetch_assoc()){ $cust_js[] = $c; }
             const net = document.getElementById('entryNetTotal').value;
 
             if(rowIndex == "-1") {
-                // ADD NEW
                 const tbody = document.querySelector('#gridTable tbody');
                 const rowCount = tbody.rows.length + 1;
                 const tr = document.createElement('tr');
@@ -468,10 +491,8 @@ while($c = $customers->fetch_assoc()){ $cust_js[] = $c; }
                 tr.innerHTML = buildRowHTML(rowCount, id, code, name, qty, rate, dis, net);
                 tbody.appendChild(tr);
             } else {
-                // UPDATE EXISTING
                 const tr = document.querySelector('#gridTable tbody').rows[rowIndex];
                 tr.innerHTML = buildRowHTML(parseInt(rowIndex)+1, id, code, name, qty, rate, dis, net);
-                // Reset Mode
                 resetEntry();
             }
             calcTotals();
@@ -491,9 +512,9 @@ while($c = $customers->fetch_assoc()){ $cust_js[] = $c; }
         }
 
         function editRow(tr) {
-            // Load data to entry
+            if (isViewMode) return;
             const inputs = tr.querySelectorAll('input');
-            document.getElementById('entryRowIndex').value = tr.rowIndex - 1; // Adjust for header
+            document.getElementById('entryRowIndex').value = tr.rowIndex - 1; 
             document.getElementById('entryId').value = inputs[0].value;
             document.getElementById('entryCode').value = tr.cells[1].innerText;
             document.getElementById('entrySearch').value = tr.cells[2].innerText;
@@ -502,7 +523,6 @@ while($c = $customers->fetch_assoc()){ $cust_js[] = $c; }
             document.getElementById('entryDisPer').value = inputs[3].value;
             document.getElementById('entryNetTotal').value = inputs[4].value;
 
-            // UI Change
             const btn = document.getElementById('btnAdd');
             btn.innerHTML = 'UPDATE <i class="fas fa-check"></i>';
             btn.className = 'btn-add btn-update';
@@ -516,7 +536,6 @@ while($c = $customers->fetch_assoc()){ $cust_js[] = $c; }
             document.getElementById('entryRate').value = "";
             document.getElementById('entryDisPer').value = "0";
             document.getElementById('entryNetTotal').value = "";
-            
             const btn = document.getElementById('btnAdd');
             btn.innerHTML = 'ADD <i class="fas fa-plus"></i>';
             btn.className = 'btn-add';
@@ -531,31 +550,13 @@ while($c = $customers->fetch_assoc()){ $cust_js[] = $c; }
 
         function resetForm() {
             if(confirm('Clear current form?')) {
-                // Clear Form Fields
-                document.getElementById('invoiceForm').reset();
-                document.querySelector('input[name="order_id"]').value = 0;
-                document.querySelector('#gridTable tbody').innerHTML = '';
-                
-                // Clear Custom Search Fields
-                document.getElementById('custSearch').value = '';
-                document.getElementById('custId').value = '';
-                document.getElementById('custAddress').value = '';
-                
-                // Reset Totals
-                document.getElementById('hdrSubTotal').value = '0.00';
-                document.getElementById('hdrDiscount').value = '0.00';
-                document.getElementById('hdrVat').value = '0.00';
-                document.getElementById('hdrNetAmt').value = '0.00';
-                
-                // Reset Entry Bar
-                resetEntry();
+                window.location.href = 'invoice_panel.php';
             }
         }
 
         function calcTotals() {
             let total = 0;
             document.querySelectorAll('input[name="item_net_total[]"]').forEach(inp => total += parseFloat(inp.value)||0);
-            
             document.getElementById('hdrSubTotal').value = total.toFixed(2);
             const dis = parseFloat(document.getElementById('hdrDiscount').value)||0;
             const vat = parseFloat(document.getElementById('hdrVat').value)||0;
@@ -576,7 +577,6 @@ while($c = $customers->fetch_assoc()){ $cust_js[] = $c; }
             const name = document.getElementById('newShopName').value;
             const phone = document.getElementById('newPhone').value;
             const addr = document.getElementById('newAddress').value;
-            
             if(!name) { alert("Shop name required"); return; }
 
             const formData = new FormData();
@@ -589,23 +589,19 @@ while($c = $customers->fetch_assoc()){ $cust_js[] = $c; }
             .then(res => res.json())
             .then(data => {
                 if(data.status == 'success') {
-                    // Add to array & select it
                     const newC = { id: data.id, shop_name: data.name, address: data.addr, phone: data.phone };
                     customers.push(newC);
                     selectCustomer(newC);
                     closeCustModal();
                     alert("Customer Added!");
-                } else {
-                    alert("Error: " + data.message);
-                }
+                } else { alert("Error: " + data.message); }
             });
         }
 
-        // Close dropdowns on click outside
         document.addEventListener('click', function(e) {
             if(!e.target.closest('.search-select')) {
-                prodResults.style.display = 'none';
-                custResults.style.display = 'none';
+                if(document.getElementById('prodResults')) document.getElementById('prodResults').style.display = 'none';
+                if(document.getElementById('custResults')) document.getElementById('custResults').style.display = 'none';
             }
         });
 

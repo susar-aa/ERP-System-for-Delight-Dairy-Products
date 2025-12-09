@@ -69,13 +69,11 @@ $orders = $conn->query($sql);
 $kpi_where = "order_date BETWEEN '$start_date' AND '$end_date'";
 if (!empty($status_filter)) $kpi_where .= " AND payment_status = '$status_filter'";
 if (!empty($rep_filter)) $kpi_where .= " AND rep_id = '$rep_filter'";
-// Route filter requires JOIN, simplified KPI might skip it or we add join logic if critical. 
-// For now keeping KPI simple or adding joins if needed. 
-// Adding minimal join for route filter support in KPI:
+
 $kpi_sql = "SELECT 
             COUNT(*) as total_count,
             COALESCE(SUM(total_amount), 0) as total_revenue,
-            COALESCE(SUM(CASE WHEN payment_status != 'paid' AND payment_status != 'cash' THEN total_amount ELSE 0 END), 0) as pending_amt
+            COALESCE(SUM(CASE WHEN payment_status NOT IN ('paid', 'cash', 'bank_transfer') THEN total_amount ELSE 0 END), 0) as pending_amt
             FROM mobile_orders o
             LEFT JOIN customers c ON o.customer_id = c.id
             WHERE $kpi_where";

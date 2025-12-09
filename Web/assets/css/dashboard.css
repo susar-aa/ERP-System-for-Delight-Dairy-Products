@@ -22,35 +22,91 @@ body {
     transition: width 0.3s ease;
     z-index: 1000;
     overflow-x: hidden;
+    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
 }
 
-/* Header & Toggle */
+/* 1. Brand Section with Logo */
 .brand-section {
-    padding: 20px;
+    padding: 15px 20px;
     background-color: #1a252f;
     display: flex;
     align-items: center;
     justify-content: space-between;
     height: 60px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.brand-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    overflow: hidden;
+}
+
+.brand-logo img {
+    height: 30px;
+    width: auto;
 }
 
 .brand-section h3 {
     margin: 0;
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     white-space: nowrap;
-    overflow: hidden;
     transition: opacity 0.3s;
 }
 
 #sidebarToggle {
     background: none;
     border: none;
-    color: white;
+    color: #bdc3c7;
     font-size: 1.2rem;
     cursor: pointer;
+    padding: 5px;
+}
+#sidebarToggle:hover { color: white; }
+
+/* 2. User Profile Widget */
+.user-profile {
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background-color: #22303e;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    transition: padding 0.3s;
 }
 
-/* Navigation Links */
+.profile-img i {
+    font-size: 40px;
+    color: #bdc3c7;
+}
+
+.profile-info {
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.user-name {
+    font-weight: bold;
+    font-size: 0.95rem;
+    color: white;
+}
+
+.user-role {
+    font-size: 0.75rem;
+    color: #95a5a6;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+}
+
+.view-profile-btn {
+    font-size: 0.7rem;
+    color: #3498db;
+    text-decoration: none;
+}
+.view-profile-btn:hover { text-decoration: underline; }
+
+/* 3. Navigation Links */
 .nav-links {
     list-style: none;
     padding: 0;
@@ -60,7 +116,7 @@ body {
 }
 
 .nav-links li {
-    border-bottom: 1px solid rgba(255,255,255,0.05);
+    border-bottom: 1px solid rgba(255,255,255,0.02);
 }
 
 .nav-links a, .dropdown-btn {
@@ -90,55 +146,108 @@ body {
     color: #fff;
 }
 
-/* Active State */
 .nav-links a.active {
     background-color: #3498db;
     color: white;
+    border-left: 4px solid #fff;
 }
 
-/* --- SUB MENUS --- */
+/* 4. Badges */
+.badge-count {
+    background-color: #e74c3c;
+    color: white;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-right: 10px;
+}
+.bg-red { background-color: #c0392b; }
+
+.sub-badge {
+    background-color: #e74c3c;
+    color: white;
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    margin-left: 5px;
+}
+
+/* 5. Sub Menus */
 .submenu {
     list-style: none;
     padding: 0;
     margin: 0;
-    background-color: #22303e;
-    display: none; /* Hidden by default */
+    background-color: #1e2a36;
+    display: none;
 }
 
 .submenu li a {
-    padding-left: 55px; /* Indent sub-items */
-    font-size: 0.9rem;
+    padding-left: 55px;
+    font-size: 0.85rem;
     color: #95a5a6;
     border-bottom: none;
+    padding-top: 10px;
+    padding-bottom: 10px;
 }
 
 .submenu li a:hover {
     color: white;
-    background: #2c3e50;
+    background: transparent;
+    padding-left: 60px; /* Slight movement effect */
 }
 
-/* Chevron Rotation */
 .arrow {
     font-size: 0.8rem;
     transition: transform 0.3s;
 }
-.dropdown.open .arrow {
-    transform: rotate(90deg);
-}
-.dropdown.open .submenu {
-    display: block;
+.dropdown.open .arrow { transform: rotate(90deg); }
+.dropdown.open .submenu { display: block; }
+
+/* 6. Developer Credits */
+.dev-credits {
+    padding: 15px;
+    background-color: #1a252f;
+    text-align: center;
+    font-size: 0.7rem;
+    color: #7f8c8d;
+    border-top: 1px solid rgba(255,255,255,0.05);
 }
 
-/* --- COLLAPSED (MINI) SIDEBAR MODE --- */
-.sidebar.collapsed {
-    width: 70px;
+.dev-text { margin-bottom: 5px; }
+.dev-text strong { color: #bdc3c7; }
+
+.dev-icons a {
+    color: #95a5a6;
+    margin: 0 5px;
+    font-size: 14px;
+    transition: color 0.2s;
+}
+.dev-icons a:hover { color: #3498db; }
+
+/* 7. Logout */
+.logout-section {
+    padding: 0;
+}
+.btn-logout {
+    background-color: #c0392b !important;
+    color: white !important;
+    justify-content: center !important;
+    border-radius: 0 !important;
 }
 
+/* --- COLLAPSED MODE --- */
+.sidebar.collapsed { width: 70px; }
 .sidebar.collapsed .link-text,
 .sidebar.collapsed .arrow,
-.sidebar.collapsed .brand-section h3 {
-    display: none; /* Hide Text */
-}
+.sidebar.collapsed #brand-text,
+.sidebar.collapsed .profile-info,
+.sidebar.collapsed .badge-count,
+.sidebar.collapsed .dev-text { display: none; }
+
+.sidebar.collapsed .brand-logo img { height: 25px; }
+.sidebar.collapsed .user-profile { padding: 15px 10px; justify-content: center; }
+.sidebar.collapsed .profile-img i { font-size: 30px; }
 
 .sidebar.collapsed .nav-links a, 
 .sidebar.collapsed .dropdown-btn {
@@ -146,46 +255,19 @@ body {
     padding: 15px 0;
 }
 
-.sidebar.collapsed .submenu {
-    position: absolute;
-    left: 70px;
-    top: auto;
-    background: #2c3e50;
-    width: 200px;
-    display: none !important; /* Hide submenus in mini mode unless handled by hover (optional) */
-    box-shadow: 4px 0 5px rgba(0,0,0,0.2);
-}
+.sidebar.collapsed .icon-text { gap: 0; }
 
-/* Show submenu on hover in collapsed mode (Optional UX enhancement) */
-.sidebar.collapsed .dropdown:hover .submenu {
-    display: block !important;
-    position: absolute;
-    margin-top: -45px; /* Align with parent */
-}
+.sidebar.collapsed .dev-credits { padding: 10px 0; }
+.sidebar.collapsed .dev-icons { display: flex; flex-direction: column; gap: 5px; }
 
-/* Content Area Adjustment */
+/* Content Adjustment */
 .main-content {
     margin-left: 260px;
     padding: 30px;
     width: calc(100% - 260px);
     transition: margin-left 0.3s ease, width 0.3s ease;
 }
-
-/* Class to apply to main-content when sidebar is collapsed */
 .main-content.expanded {
     margin-left: 70px;
     width: calc(100% - 70px);
 }
-
-/* Logout Section */
-.logout-section {
-    padding: 10px;
-    border-top: 1px solid rgba(255,255,255,0.1);
-}
-.btn-logout {
-    background-color: #c0392b !important;
-    color: white !important;
-    border-radius: 4px;
-    justify-content: center !important;
-}
-.sidebar.collapsed .btn-logout span { display: none; }
